@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = ["data-builder", "web", "shared"]
+
+# The web crate targets wasm32-unknown-unknown and is built via `trunk`,
+# so it is excluded from plain `cargo build`/`cargo run` at the workspace root
+# to avoid accidental native builds of it.
+default-members = ["data-builder"]

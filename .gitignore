@@ -1,0 +1,19 @@
+# Build artifacts
+/target
+/web/dist
+
+# Generated from the game's pak files by data-builder (see README);
+# contains extracted game data and icons that are not ours to redistribute.
+/web/assets
+
+# Local editor/agent configuration (machine-specific paths)
+/.claude
+
+# Compiler crash dumps
+rustc-ice-*.txt
+
+# Never commit real save files -- deliberately unanchored so a copied save
+# is ignored anywhere in the tree. (Tests read saves from paths outside the
+# repo via ICARUS_CHARACTERS / ICARUS_PROFILE env vars.)
+Characters.json
+Profile.json

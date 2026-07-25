@@ -1,0 +1,10 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+# preserve_order is required for save-file round-trip fidelity: the game
+# writes object keys in a fixed order and we re-emit them byte-identically.
+serde_json = { version = "1", features = ["preserve_order"] }

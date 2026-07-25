@@ -1,0 +1,800 @@
+:root {
+  --bg: #0b0d11;
+  --surface: #14171d;
+  --surface-2: #1b1f27;
+  --surface-hover: #232833;
+  --border: #2b313d;
+  --border-soft: #21262f;
+  --text: #e9ebf0;
+  --text-muted: #97a0af;
+  --text-faint: #626a78;
+  --accent: #5b8cff;
+  --accent-soft: rgba(91, 140, 255, 0.16);
+  --success: #3ecf8e;
+  --success-soft: rgba(62, 207, 142, 0.12);
+  --warning: #e8a23d;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Keep this a flat color: the sticky header/controls paint var(--bg) over
+     content as it scrolls under them, and any gradient here shows up as
+     visible seams at their edges. */
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4150;
+}
+
+.app {
+  max-width: 1700px;
+  margin: 0 auto;
+  padding: 16px 32px 64px;
+}
+
+/* ---------- Header ---------- */
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: linear-gradient(var(--bg) 82%, transparent);
+  padding: 8px 0 10px;
+  margin-bottom: 6px;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+header h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+  background: linear-gradient(90deg, var(--text), #9fb4dc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Tabs / segmented controls ---------- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  width: fit-content;
+}
+
+button {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 7px 16px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+.tabs button:hover:not(.active):not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+button.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(91, 140, 255, 0.35);
+}
+button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+/* Press feedback only on small pill buttons -- scaling a full-width bar
+   (like the tree-group headers) moves its edge out from under the cursor
+   mid-click, which swallows the click event near the edges. */
+.tabs button:active:not(:disabled),
+.character-tabs button:active:not(:disabled),
+.download-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* ---------- Toolbar / file picker ---------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 16px;
+}
+
+.file-picker {
+  background: linear-gradient(135deg, #2f7d5a, #256a4b);
+  color: #eafff3;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  transition: filter 0.15s ease;
+}
+.file-picker:hover {
+  filter: brightness(1.12);
+}
+.file-picker input[type="file"] {
+  display: none;
+}
+
+.download-btn {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+}
+.download-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: #3a4150;
+}
+
+.status {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-left: auto;
+}
+
+/* ---------- Empty state ---------- */
+
+.empty-state {
+  max-width: 560px;
+  margin: 8vh auto 0;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 40px 40px 32px;
+  box-shadow: var(--shadow-md);
+}
+.empty-state-icon {
+  font-size: 2.4rem;
+  margin-bottom: 8px;
+}
+.empty-state h2 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+.empty-state p {
+  color: var(--text-muted);
+  margin: 6px 0;
+  font-size: 0.88rem;
+}
+.empty-state code {
+  display: inline-block;
+  margin-top: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.78rem;
+  color: #b9c3d6;
+  word-break: break-all;
+}
+.empty-state-note {
+  font-size: 0.78rem !important;
+  color: var(--text-faint) !important;
+  margin-top: 14px !important;
+}
+
+/* ---------- Character selector tabs ---------- */
+
+.character-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+  flex-wrap: wrap;
+}
+.character-tabs button {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+}
+.character-tabs button.active {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+/* ---------- Layout ---------- */
+
+main {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+/* Profile editor: no talent browser, just the fields panel */
+main.single-column {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 720px;
+}
+@media (max-width: 1000px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+}
+
+.side-panel {
+  position: sticky;
+  top: 64px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+@media (max-width: 1000px) {
+  .side-panel {
+    position: static;
+    max-height: none;
+  }
+}
+
+.hint {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  margin: 0 0 14px;
+}
+
+fieldset {
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin: 0 0 16px;
+}
+legend {
+  padding: 0 8px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.field-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.field-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.field-grid input[type="text"],
+.field-grid input[type="number"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field-grid input:focus,
+input.search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.field-grid input[readonly] {
+  opacity: 0.6;
+}
+
+.checkbox-field {
+  flex-direction: row !important;
+  align-items: flex-start;
+  gap: 8px !important;
+  line-height: 1.35;
+}
+
+/* Custom checkbox look */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 19px;
+  height: 19px;
+  min-width: 19px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  position: relative;
+  flex: none;
+  margin-top: 1px;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+input[type="checkbox"]:hover {
+  border-color: #4a5266;
+}
+input[type="checkbox"]:checked {
+  background: var(--success);
+  border-color: var(--success);
+}
+input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
+  border: solid #06110c;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* ---------- Level estimate ---------- */
+
+.level-estimate {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.level-line {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+.level-line strong {
+  color: var(--text);
+}
+.level-line.points-over {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+/* ---------- Currency fields ---------- */
+
+.currency-field {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px !important;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--cur, var(--border-soft));
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+}
+.currency-name {
+  flex: 1;
+  color: var(--cur, var(--text));
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+/* In-game currency colors, nudged toward Material 300/400 shades so they
+   sit comfortably on the dark surface. */
+.currency-Credits          { --cur: #ffb74d; }  /* Ren: amber */
+.currency-Exotic1          { --cur: #f48fb1; }  /* Exotics: light pink */
+.currency-Exotic_Red       { --cur: #ef5350; }  /* Red Exotics: red */
+.currency-Biomass          { --cur: #81c784; }  /* Legendary Biomass: green */
+.currency-Exotic_Uranium   { --cur: #d4e157; }  /* Uranium Rod: yellow-green */
+.currency-Licence          { --cur: #64b5f6; }  /* Legendary Licence: blue */
+.currency-Refund           { --cur: #b39ddb; }  /* Respec Point: soft violet */
+.currency-Biomass_Converter{ --cur: #4dd0e1; }  /* Flux: cyan */
+.currency-field input[type="number"] {
+  width: 100px;
+  text-align: right;
+}
+
+/* ---------- Icons ---------- */
+
+.icon {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #10131a;
+  border: 1px solid var(--border-soft);
+  padding: 4px;
+}
+.icon-placeholder {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--surface-2),
+    var(--surface-2) 4px,
+    var(--surface) 4px,
+    var(--surface) 8px
+  );
+  border: 1px dashed var(--border);
+}
+.tree-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+/* ---------- Talent browser ---------- */
+
+.talent-browser {
+  min-width: 0;
+}
+
+.browser-controls {
+  position: sticky;
+  top: 56px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 0 10px;
+  background: linear-gradient(var(--bg) 88%, transparent);
+  margin-bottom: 4px;
+}
+
+input.search {
+  flex: 1;
+  min-width: 220px;
+  padding: 9px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-family: inherit;
+}
+input.search::placeholder {
+  color: var(--text-faint);
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.bulk-btn {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.78rem;
+}
+.bulk-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.tree-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tree-group {
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.tree-group.open {
+  border-color: var(--border);
+}
+
+.tree-group-header {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  width: 100%;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: background 0.12s ease;
+  box-sizing: border-box;
+}
+.tree-group-header:hover {
+  background: var(--surface-hover);
+}
+.disclosure {
+  display: inline-block;
+  width: 0.9em;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+}
+.tree-group-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tree-group-count {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.progress-track {
+  width: 90px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+  flex: none;
+  border: 1px solid var(--border-soft);
+}
+.progress-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--success));
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+/* ---------- Talent cards ---------- */
+
+/* Fixed grid, not CSS columns: column layouts rebalance whenever a card's
+   height changes (unlocking, confirm boxes), which makes cards visibly jump
+   around. Cards stretch to equal height per row (stable positions); the
+   requirements footer is pinned to the card bottom so the extra space
+   reads as tile padding instead of dead space. */
+.talent-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 10px;
+  padding: 6px 14px 16px;
+}
+@media (max-width: 560px) {
+  .talent-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.talent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  cursor: pointer;
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid transparent;
+  background: var(--surface-2);
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.talent-row:hover {
+  background: var(--surface-hover);
+}
+.talent-row.unlocked {
+  border-left-color: var(--success);
+  background: var(--success-soft);
+}
+.talent-row.unlocked:hover {
+  background: rgba(62, 207, 142, 0.18);
+}
+.talent-row .icon {
+  width: 44px;
+  height: 44px;
+  margin-top: 1px;
+}
+/* Missing requirements: yellow edge + note, whether locked or unlocked
+   (the user can choose to unlock something without its prerequisites). */
+.talent-row.unmet {
+  border-left-color: var(--warning);
+}
+.talent-row.unmet .talent-name::after {
+  content: " ⚠ missing requirements";
+  color: var(--warning);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+.talent-body {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.talent-name {
+  font-weight: 600;
+  line-height: 1.3;
+}
+.talent-desc {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.talent-req {
+  color: var(--text-faint);
+  font-size: 0.74rem;
+  line-height: 1.4;
+  white-space: normal;
+  /* Pin requirements to the card's bottom edge; in a stretched card the
+     free space then sits between description and footer, like padding. */
+  margin-top: auto;
+  padding-top: 4px;
+}
+.talent-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.effect-chip {
+  background: var(--accent-soft);
+  color: #a8c2ff;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 0.73rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.talent-row.unlocked .effect-chip {
+  background: var(--success-soft);
+  color: #7fe0b4;
+}
+
+.rank-badge {
+  flex: none;
+  align-self: flex-start;
+  margin-top: 2px;
+  background: var(--success);
+  color: #06110c;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rank-badge.rank-zero {
+  background: var(--surface);
+  color: var(--text-faint);
+  border: 1px solid var(--border);
+}
+
+/* The whole card is the control now */
+.talent-row {
+  user-select: none;
+}
+
+/* ---------- Inline confirmation ---------- */
+
+.confirm-box {
+  margin-top: 8px;
+  background: var(--surface);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  cursor: default;
+}
+.confirm-text {
+  display: block;
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.confirm-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.confirm-actions button {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font-size: 0.76rem;
+}
+.confirm-actions button:hover {
+  background: var(--surface-hover);
+}
+.confirm-actions .confirm-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.confirm-actions .confirm-primary:hover {
+  filter: brightness(1.1);
+  background: var(--accent);
+}
+
+/* ---------- Backup warning banner ---------- */
+
+.backup-banner {
+  background: rgba(232, 162, 61, 0.09);
+  border: 1px solid rgba(232, 162, 61, 0.35);
+  color: #ecc189;
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  margin-bottom: 14px;
+}
+
+.hint-warning {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+/* ---------- Footer ---------- */
+
+footer {
+  margin-top: 40px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.footer-sep {
+  color: var(--border);
+}
