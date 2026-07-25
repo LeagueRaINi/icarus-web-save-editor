@@ -7,6 +7,8 @@ your save files never leave your machine.
 **⚠ Always back up your original save files before overwriting them with an
 edited copy, and close the game before replacing files.**
 
+![PREVIEW](/.github/resources/preview.gif)
+
 ## Features
 
 - **Characters.json**: edit name, XP, death/abandoned state, talents and
