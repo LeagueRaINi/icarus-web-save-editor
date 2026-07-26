@@ -1,4 +1,6 @@
-use crate::data::{format_stat, prettify_row_name, tree_icon_file, BUNDLE, TALENTS_BY_NAME};
+use crate::data::{
+    format_stat, prettify_row_name, tree_icon_file, BUNDLE, TALENTS_BY_NAME, TALENTS_BY_TREE,
+};
 use crate::icon::Icon;
 use crate::talent_owner::{FlagOwner, TalentOwner};
 use crate::unlock::{
@@ -25,41 +27,27 @@ where
     let category: RwSignal<Option<Category>> = RwSignal::new(categories.first().copied());
     let search: RwSignal<String> = RwSignal::new(String::new());
 
-    let grouped = move || -> Vec<(String, String, Vec<&'static ResolvedTalent>)> {
+    // Which tree sections have at least one match. The contents of each are
+    // left to the section itself -- see `TreeGroup`.
+    let grouped = move || -> Vec<(String, String)> {
         let cat = category.get();
         let q = search.get().to_lowercase();
-        let mut groups: BTreeMap<String, (String, Vec<&'static ResolvedTalent>)> = BTreeMap::new();
+        let mut groups: BTreeMap<String, String> = BTreeMap::new();
         for t in BUNDLE.talents.iter() {
-            if !T::storable(t.category) {
+            if !passes_filters::<T>(t, cat, &q) {
                 continue;
             }
-            if let Some(c) = cat {
-                if t.category != c {
-                    continue;
-                }
-            }
-            if !q.is_empty()
-                && !t.display_name.to_lowercase().contains(&q)
-                && !t.description.to_lowercase().contains(&q)
-            {
-                continue;
-            }
-            let entry = groups.entry(t.tree.clone()).or_insert_with(|| {
+            groups.entry(t.tree.clone()).or_insert_with(|| {
                 // Blueprint trees have no localized names -- the "display
                 // name" is just the raw row name again; prettify those.
-                let display = if t.tree_display_name.contains('_') {
+                if t.tree_display_name.contains('_') {
                     prettify_row_name(&t.tree_display_name)
                 } else {
                     t.tree_display_name.clone()
-                };
-                (display, Vec::new())
+                }
             });
-            entry.1.push(t);
         }
-        for (_, v) in groups.values_mut() {
-            v.sort_by(|a, b| a.display_name.cmp(&b.display_name));
-        }
-        groups.into_iter().map(|(tree, (display, items))| (tree, display, items)).collect()
+        groups.into_iter().collect()
     };
 
     view! {
@@ -94,38 +82,6 @@ where
                     prop:value=move || search.get()
                     on:input=move |ev| search.set(event_target_value(&ev))
                 />
-                <div class="bulk-actions">
-                    <button
-                        class="bulk-btn"
-                        title="Unlock everything currently shown (category + search filter apply)"
-                        on:click=move |_: MouseEvent| {
-                            let items: Vec<&'static ResolvedTalent> =
-                                grouped().into_iter().flat_map(|(_, _, v)| v).collect();
-                            characters.update(|opt| {
-                                if let Some(c) = opt.as_mut().zip(selected.get()).and_then(|(l, i)| l.get_mut(i)) {
-                                    unlock_all(c, &items);
-                                }
-                            });
-                        }
-                    >
-                        "Unlock all"
-                    </button>
-                    <button
-                        class="bulk-btn"
-                        title="Lock everything currently shown, plus anything that depends on it"
-                        on:click=move |_: MouseEvent| {
-                            let items: Vec<&'static ResolvedTalent> =
-                                grouped().into_iter().flat_map(|(_, _, v)| v).collect();
-                            characters.update(|opt| {
-                                if let Some(c) = opt.as_mut().zip(selected.get()).and_then(|(l, i)| l.get_mut(i)) {
-                                    lock_all(c, &items);
-                                }
-                            });
-                        }
-                    >
-                        "Lock all"
-                    </button>
-                </div>
             </div>
             <p class="hint">
                 "Click a card to unlock it, click again to raise its rank, and clicking at "
@@ -137,14 +93,46 @@ where
             <div class="tree-groups">
                 <For
                     each=grouped
-                    key=|(tree, _, _)| tree.clone()
-                    children=move |(tree, display, items)| {
-                        view! { <TreeGroup tree=tree display=display items=items characters=characters selected=selected /> }
+                    key=|(tree, _)| tree.clone()
+                    children=move |(tree, display)| {
+                        view! {
+                            <TreeGroup
+                                tree=tree
+                                display=display
+                                category=category
+                                search=search
+                                characters=characters
+                                selected=selected
+                            />
+                        }
                     }
                 />
             </div>
         </div>
     }
+}
+
+/// Whether a talent passes the browser's current filters. Shared by the
+/// section list and each section's own contents so the two cannot disagree
+/// about what is on screen.
+fn passes_filters<T: TalentOwner>(t: &ResolvedTalent, cat: Option<Category>, query: &str) -> bool {
+    T::storable(t.category)
+        && cat.is_none_or(|c| t.category == c)
+        && (query.is_empty()
+            || t.display_name.to_lowercase().contains(query)
+            || t.description.to_lowercase().contains(query))
+}
+
+/// The talents one tree section should currently list.
+fn filtered_items<T: TalentOwner>(
+    tree: &str,
+    cat: Option<Category>,
+    query: &str,
+) -> Vec<&'static ResolvedTalent> {
+    TALENTS_BY_TREE
+        .get(tree)
+        .map(|all| all.iter().copied().filter(|t| passes_filters::<T>(t, cat, query)).collect())
+        .unwrap_or_default()
 }
 
 /// A single collapsible tree-group. Rows are only mounted (and only start
@@ -156,18 +144,36 @@ where
 fn TreeGroup<T>(
     tree: String,
     display: String,
-    items: Vec<&'static ResolvedTalent>,
+    category: RwSignal<Option<Category>>,
+    search: RwSignal<String>,
     characters: RwSignal<Option<Vec<T>>>,
     selected: RwSignal<Option<usize>>,
 ) -> impl IntoView
 where
     T: TalentOwner + FlagOwner + Clone + Send + Sync + 'static,
 {
-    let count = items.len();
-    let is_open = RwSignal::new(count <= 12);
+    // Derived rather than passed in: `For` keys these sections by tree name,
+    // so a section that survives a filter change is never rebuilt. A plain
+    // list prop would keep showing (and bulk-acting on) the pre-filter
+    // contents.
+    let items = {
+        let tree = tree.clone();
+        move || filtered_items::<T>(&tree, category.get(), &search.get().to_lowercase())
+    };
+    let count = {
+        let items = items.clone();
+        move || items().len()
+    };
+
+    let initial_count =
+        filtered_items::<T>(&tree, category.get_untracked(), &search.get_untracked().to_lowercase())
+            .len();
+    let is_open = RwSignal::new(initial_count <= 12);
+
     let unlocked_count = {
         let items = items.clone();
         move || {
+            let items = items();
             characters.with(|opt| {
                 let Some(list) = opt else { return 0 };
                 let Some(idx) = selected.get() else { return 0 };
@@ -178,29 +184,79 @@ where
     };
     let pct = {
         let unlocked_count = unlocked_count.clone();
-        move || (unlocked_count() * 100).checked_div(count).unwrap_or(0)
+        let count = count.clone();
+        move || (unlocked_count() * 100).checked_div(count()).unwrap_or(0)
     };
-    let icon_file = tree_icon_file(&tree, &items).map(str::to_string);
+    // Keyed off the whole tree so the header image doesn't change as the
+    // search narrows what the section lists.
+    let icon_file = TALENTS_BY_TREE
+        .get(tree.as_str())
+        .and_then(|all| tree_icon_file(&tree, all))
+        .map(str::to_string);
+
+    // Bulk actions are scoped to this section: whatever it currently lists,
+    // which is already narrowed by the category tab and the search box.
+    let on_unlock_all = {
+        let items = items.clone();
+        move |_: MouseEvent| {
+            let items = items();
+            characters.update(|opt| {
+                if let Some(c) = opt.as_mut().zip(selected.get()).and_then(|(l, i)| l.get_mut(i)) {
+                    unlock_all(c, &items);
+                }
+            });
+        }
+    };
+    let on_lock_all = {
+        let items = items.clone();
+        move |_: MouseEvent| {
+            let items = items();
+            characters.update(|opt| {
+                if let Some(c) = opt.as_mut().zip(selected.get()).and_then(|(l, i)| l.get_mut(i)) {
+                    lock_all(c, &items);
+                }
+            });
+        }
+    };
 
     view! {
         <div class="tree-group" class:open=move || is_open.get()>
-            <button class="tree-group-header" on:click=move |_| is_open.update(|o| *o = !*o)>
-                <span class="disclosure">{move || if is_open.get() { "▾" } else { "▸" }}</span>
-                <Icon file=icon_file size=24 class="tree-icon" />
-                <span class="tree-group-title">{display}</span>
-                <span class="tree-group-count">{move || unlocked_count()} " / " {count}</span>
-                <span class="progress-track">
-                    <span class="progress-fill" style=move || format!("width: {}%", pct())></span>
-                </span>
-            </button>
+            <div class="tree-group-header">
+                <button class="tree-group-toggle" on:click=move |_| is_open.update(|o| *o = !*o)>
+                    <span class="disclosure">{move || if is_open.get() { "▾" } else { "▸" }}</span>
+                    <Icon file=icon_file size=24 class="tree-icon" />
+                    <span class="tree-group-title">{display}</span>
+                    <span class="tree-group-count">
+                        {move || unlocked_count()} " / " {move || count()}
+                    </span>
+                    <span class="progress-track">
+                        <span class="progress-fill" style=move || format!("width: {}%", pct())></span>
+                    </span>
+                </button>
+                <div class="tree-group-actions">
+                    <button
+                        class="bulk-btn"
+                        title="Unlock everything in this section, plus any prerequisites it needs"
+                        on:click=on_unlock_all
+                    >
+                        "Unlock all"
+                    </button>
+                    <button
+                        class="bulk-btn"
+                        title="Lock everything in this section, plus anything that depends on it"
+                        on:click=on_lock_all
+                    >
+                        "Lock all"
+                    </button>
+                </div>
+            </div>
             {move || {
                 is_open
                     .get()
                     .then(|| {
                         view! {
                             <div class="talent-cards">
-                                {items
-                                    .clone()
+                                {items()
                                     .into_iter()
                                     .map(|t| view! { <TalentRow talent=t characters=characters selected=selected /> })
                                     .collect_view()}

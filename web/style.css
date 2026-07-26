@@ -504,11 +504,6 @@ input.search::placeholder {
   color: var(--text-faint);
 }
 
-.bulk-actions {
-  display: flex;
-  gap: 6px;
-  flex: none;
-}
 .bulk-btn {
   background: var(--surface-2);
   color: var(--text-muted);
@@ -538,22 +533,43 @@ input.search::placeholder {
   border-color: var(--border);
 }
 
+/* The header is a row: a full-width disclosure button plus this section's
+   bulk actions, which cannot be nested inside that button. */
 .tree-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 12px;
+  transition: background 0.12s ease;
+}
+/* Highlight the whole row, not just the disclosure button -- otherwise the
+   background stops short of the bulk actions and the header looks cut off. */
+.tree-group-header:hover {
+  background: var(--surface-hover);
+}
+.tree-group-toggle {
   all: unset;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   color: var(--text);
   font-size: 0.92rem;
   font-weight: 600;
-  transition: background 0.12s ease;
   box-sizing: border-box;
 }
-.tree-group-header:hover {
-  background: var(--surface-hover);
+
+.tree-group-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.tree-group-actions .bulk-btn {
+  padding: 5px 11px;
+  font-size: 0.72rem;
 }
 .disclosure {
   display: inline-block;
