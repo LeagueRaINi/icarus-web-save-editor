@@ -19,6 +19,21 @@ pub static TALENTS_BY_NAME: LazyLock<HashMap<&'static str, &'static ResolvedTale
 pub static TREES_BY_NAME: LazyLock<HashMap<&'static str, &'static ResolvedTree>> =
     LazyLock::new(|| BUNDLE.trees.iter().map(|t| (t.name.as_str(), t)).collect());
 
+/// Talent rows grouped by tree, pre-sorted the way the browser lists them.
+/// Lets one tree section re-derive its own filtered contents without
+/// rescanning the whole bundle.
+pub static TALENTS_BY_TREE: LazyLock<HashMap<&'static str, Vec<&'static ResolvedTalent>>> =
+    LazyLock::new(|| {
+        let mut map: HashMap<&'static str, Vec<&'static ResolvedTalent>> = HashMap::new();
+        for t in BUNDLE.talents.iter() {
+            map.entry(t.tree.as_str()).or_default().push(t);
+        }
+        for items in map.values_mut() {
+            items.sort_by(|a, b| a.display_name.cmp(&b.display_name));
+        }
+        map
+    });
+
 /// Reverse dependency index: talent RowName -> every talent that lists it in
 /// `required_talents`. Used to cascade removals ("if you lock this, lock
 /// everything that needed it too").
