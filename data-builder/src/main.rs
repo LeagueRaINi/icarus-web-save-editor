@@ -3,7 +3,7 @@ mod pak_source;
 mod texture;
 mod uasset;
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 use json::{bool_field, handle_row_name, i64_field, nsloctext, opt_str, text_field, DataTable};
 use pak_source::{game_path_to_asset_base, PakSource};
@@ -14,7 +14,7 @@ use shared::{
 };
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 /// Icarus's standard Steam install location, used when no game root is given.
@@ -134,10 +134,7 @@ fn main() -> Result<()> {
         by_cat(Category::Connector),
     );
 
-    let icon_paks = PakSource::open(&[
-        content.join("Paks/pakchunk0_s19-WindowsNoEditor.pak"),
-        content.join("Paks/pakchunk0_s20-WindowsNoEditor.pak"),
-    ])?;
+    let icon_paks = open_content_paks(&content)?;
     let icon_out_dir = out_dir.join("icons");
     std::fs::create_dir_all(&icon_out_dir)?;
 
@@ -187,6 +184,31 @@ fn main() -> Result<()> {
     eprintln!("wrote {}", out_path.display());
 
     Ok(())
+}
+
+/// Opens every `*.pak` under `<content>/Paks`.
+///
+/// Icarus splits its content across `pakchunk0_s<N>-WindowsNoEditor.pak`
+/// files, and which of them holds any given icon changes with every game
+/// update, so the set is discovered at runtime and `PakSource` resolves each
+/// asset through the pak indexes. Sorted by filename purely so the log and
+/// any duplicate reporting are stable between runs.
+fn open_content_paks(content: &Path) -> Result<PakSource> {
+    let dir = content.join("Paks");
+    let mut paths: Vec<PathBuf> = std::fs::read_dir(&dir)
+        .with_context(|| format!("reading {}", dir.display()))?
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pak")))
+        .collect();
+
+    if paths.is_empty() {
+        bail!("no .pak files found in {}", dir.display());
+    }
+    paths.sort();
+
+    eprintln!("opening {} content paks from {}", paths.len(), dir.display());
+    PakSource::open(&paths)
 }
 
 fn resolve_all_talents(t: &Tables) -> Vec<ResolvedTalent> {
