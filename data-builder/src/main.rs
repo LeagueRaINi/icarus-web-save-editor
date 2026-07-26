@@ -3,7 +3,8 @@ mod pak_source;
 mod texture;
 mod uasset;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
+use clap::Parser;
 use json::{bool_field, handle_row_name, i64_field, nsloctext, opt_str, text_field, DataTable};
 use pak_source::{game_path_to_asset_base, PakSource};
 use regex::Regex;
@@ -15,6 +16,30 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::OnceLock;
+
+/// Icarus's standard Steam install location, used when no game root is given.
+const DEFAULT_GAME_ROOT: &str = r"C:\Program Files (x86)\Steam\steamapps\common\Icarus";
+
+/// The repo's `web/assets/data` folder. Anchored to this crate's source
+/// location (baked in at compile time by cargo) rather than the process's
+/// current directory, so the output lands in the right place no matter which
+/// directory `cargo run -p data-builder` was invoked from. The `..` is
+/// resolved lexically where it is used.
+const DEFAULT_OUT_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../web/assets/data");
+
+/// Extracts talent/blueprint definitions and icons from the ICARUS pak files
+/// into the JSON bundle and PNGs the web app consumes.
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// ICARUS install directory (the folder containing `Icarus/Content`)
+    #[arg(value_name = "GAME_ROOT", default_value = DEFAULT_GAME_ROOT)]
+    game_root: PathBuf,
+
+    /// Directory to write `talents.json` and `icons/` into
+    #[arg(short, long, value_name = "DIR", default_value_os_t = path_clean::clean(DEFAULT_OUT_DIR))]
+    out_dir: PathBuf,
+}
 
 /// Plain display text + optional icon resolved from whichever table actually
 /// owns it for a given talent row.
@@ -45,18 +70,21 @@ struct Tables {
 }
 
 fn main() -> Result<()> {
-    // Default to Icarus's standard Steam install location; override with an
-    // explicit path (the folder containing `Icarus/Content/...`) as arg 1.
-    let game_root = std::env::args()
-        .nth(1)
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(r"C:\Program Files (x86)\Steam\steamapps\common\Icarus"));
-    let out_dir = std::env::args()
-        .nth(2)
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("../web/assets/data"));
+    let Args { game_root, out_dir } = Args::parse();
 
     let content = game_root.join("Icarus/Content");
+    if !content.is_dir() {
+        bail!(
+            "{} does not look like an ICARUS install: {} not found\n\
+             pass the install directory as an argument, e.g. `-- \"{DEFAULT_GAME_ROOT}\"`",
+            game_root.display(),
+            content.display(),
+        );
+    }
+
+    eprintln!("game root: {}", game_root.display());
+    eprintln!("output:    {}", out_dir.display());
+
     let data_pak = PakSource::open(&[content.join("Data/data.pak")])?;
 
     let tables = Tables {

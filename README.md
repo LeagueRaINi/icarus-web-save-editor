@@ -35,12 +35,21 @@ blueprint definitions, icons) is extracted from the game's pak files and is
 not committed to this repository. You need ICARUS installed, then:
 
 ```bash
-cargo run --release -p data-builder -- "C:\Program Files (x86)\Steam\steamapps\common\Icarus"
+cargo run --release -p data-builder
 ```
 
 This writes `web/assets/data/talents.json` and the icon PNGs (downscaled to
-96 px automatically). Without this step the `web` crate does not compile —
-it embeds `talents.json` at build time. Re-run it after game updates.
+96 px automatically), regardless of which directory you run it from. Without
+this step the `web` crate does not compile — it embeds `talents.json` at
+build time. Re-run it after game updates.
+
+The game is looked for at its default Steam location; pass the install
+directory (the folder containing `Icarus/Content`) if yours lives elsewhere,
+and `-o` to write the assets somewhere else. See `--help` for details.
+
+```bash
+cargo run --release -p data-builder -- "D:\Games\Icarus" -o web/assets/data
+```
 
 Then build the web app with the Rust `wasm32-unknown-unknown` target and
 [trunk](https://trunkrs.dev):
