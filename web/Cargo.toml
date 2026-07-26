@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 leptos = { version = "0.8", features = ["csr"] }
+leptos-use = "0.16"
+codee = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 shared = { path = "../shared" }

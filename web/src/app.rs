@@ -5,9 +5,19 @@ use crate::file_io::{read_input_file, trigger_download};
 use crate::profile::{parse_profile_file, serialize_profile_file, ProfileSave};
 use crate::profile_fields::ProfileFieldsPanel;
 use crate::talents_panel::TalentBrowser;
+use codee::string::FromToStringCodec;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use leptos_use::storage::use_session_storage;
 use wasm_bindgen::JsCast;
+
+/// Session-storage keys for the in-progress file of each editor. Session
+/// storage is per-tab and cleared when the tab closes, so an edited save
+/// survives an accidental refresh without outliving the session it was
+/// opened in. What is stored is the serialized save file itself, exactly as
+/// the download button would write it, so restoring is the normal parse path.
+const CHARACTERS_CACHE_KEY: &str = "icarus-save-editor:characters";
+const PROFILE_CACHE_KEY: &str = "icarus-save-editor:profile";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
@@ -65,6 +75,30 @@ pub fn App() -> impl IntoView {
     }
 }
 
+/// Offer to pick up where the last page load left off. Shown only when
+/// nothing is open yet and this tab's session has a cached file, so it
+/// never gets in the way of normal use.
+#[component]
+fn RestoreBanner<F, G>(summary: String, on_restore: F, on_discard: G) -> impl IntoView
+where
+    F: Fn() + 'static,
+    G: Fn() + 'static,
+{
+    view! {
+        <div class="restore-banner">
+            <span class="restore-text">
+                "Unsaved work from this session was found — " {summary} "."
+            </span>
+            <div class="restore-actions">
+                <button class="restore-primary" on:click=move |_| on_restore()>
+                    "Continue with previous data"
+                </button>
+                <button on:click=move |_| on_discard()>"Discard"</button>
+            </div>
+        </div>
+    }
+}
+
 /// Landing card shown before a file is loaded: what to open and where the
 /// game keeps it.
 #[component]
@@ -90,6 +124,27 @@ fn CharacterEditor() -> impl IntoView {
     let characters: RwSignal<Option<Vec<CharacterSave>>> = RwSignal::new(None);
     let selected: RwSignal<Option<usize>> = RwSignal::new(None);
     let status: RwSignal<String> = RwSignal::new(String::new());
+
+    let (cached, set_cached, clear_cached) =
+        use_session_storage::<String, FromToStringCodec>(CHARACTERS_CACHE_KEY);
+
+    // Read once, before any edit can overwrite it: whatever this tab was
+    // working on when the page last unloaded. A corrupt or empty entry just
+    // means no offer to restore.
+    let restorable: RwSignal<Option<Vec<CharacterSave>>> =
+        RwSignal::new(parse_characters_file(&cached.get_untracked()).ok().filter(|l| !l.is_empty()));
+
+    // Mirror every edit back into storage. Skipped while nothing is open,
+    // which is what keeps a pending restore offer intact until it is either
+    // taken or discarded.
+    Effect::new(move |_| {
+        characters.with(|opt| {
+            let Some(list) = opt else { return };
+            if let Ok(text) = serialize_characters_file(list) {
+                set_cached.set(text);
+            }
+        });
+    });
 
     let on_file_change = move |ev: leptos::ev::Event| {
         let Some(input) = ev.target().and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok()) else {
@@ -137,6 +192,34 @@ fn CharacterEditor() -> impl IntoView {
             </button>
             <span class="status">{move || status.get()}</span>
         </div>
+
+        {move || {
+            (characters.with(|opt| opt.is_none()) && restorable.with(|r| r.is_some()))
+                .then(|| {
+                    let summary = restorable.with(|r| {
+                        let n = r.as_ref().map(|l| l.len()).unwrap_or(0);
+                        format!("{n} character(s)")
+                    });
+                    let clear_cached = clear_cached.clone();
+                    view! {
+                        <RestoreBanner
+                            summary=summary
+                            on_restore=move || {
+                                if let Some(list) = restorable.get_untracked() {
+                                    status.set(format!("Restored {} character(s) from this session.", list.len()));
+                                    selected.set(Some(0));
+                                    characters.set(Some(list));
+                                }
+                                restorable.set(None);
+                            }
+                            on_discard=move || {
+                                clear_cached();
+                                restorable.set(None);
+                            }
+                        />
+                    }
+                })
+        }}
 
         {move || {
             characters
@@ -213,6 +296,21 @@ fn ProfileEditor() -> impl IntoView {
     let selected: RwSignal<Option<usize>> = RwSignal::new(None);
     let status: RwSignal<String> = RwSignal::new(String::new());
 
+    let (cached, set_cached, clear_cached) =
+        use_session_storage::<String, FromToStringCodec>(PROFILE_CACHE_KEY);
+
+    let restorable: RwSignal<Option<ProfileSave>> =
+        RwSignal::new(parse_profile_file(&cached.get_untracked()).ok());
+
+    Effect::new(move |_| {
+        profile.with(|opt| {
+            let Some(p) = opt.as_ref().and_then(|list| list.first()) else { return };
+            if let Ok(text) = serialize_profile_file(p) {
+                set_cached.set(text);
+            }
+        });
+    });
+
     let on_file_change = move |ev: leptos::ev::Event| {
         let Some(input) = ev.target().and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok()) else {
             return;
@@ -260,6 +358,30 @@ fn ProfileEditor() -> impl IntoView {
             </button>
             <span class="status">{move || status.get()}</span>
         </div>
+
+        {move || {
+            (profile.with(|opt| opt.is_none()) && restorable.with(|r| r.is_some()))
+                .then(|| {
+                    let clear_cached = clear_cached.clone();
+                    view! {
+                        <RestoreBanner
+                            summary="an edited Profile.json".to_string()
+                            on_restore=move || {
+                                if let Some(p) = restorable.get_untracked() {
+                                    status.set("Restored Profile.json from this session.".to_string());
+                                    profile.set(Some(vec![p]));
+                                    selected.set(Some(0));
+                                }
+                                restorable.set(None);
+                            }
+                            on_discard=move || {
+                                clear_cached();
+                                restorable.set(None);
+                            }
+                        />
+                    }
+                })
+        }}
 
         {move || {
             profile
